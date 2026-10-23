@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Экран — Concert Screen</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="assets/stage.css">
+<style>
+  html,body{margin:0;height:100%;background:#000;overflow:hidden}
+  body.hide-cursor,body.hide-cursor *{cursor:none !important}
+  #host{position:fixed;inset:0}
+  #hint{position:fixed;left:50%;bottom:4vh;transform:translateX(-50%);z-index:100;
+    font:500 15px/1.4 Inter,system-ui,sans-serif;color:#fff;background:rgba(0,0,0,.72);
+    padding:10px 18px;border-radius:10px;transition:opacity .6s;pointer-events:none;white-space:nowrap}
+  #hint.off{opacity:0}
+</style>
+</head>
+<body>
+<div id="host"></div>
+<div id="hint">Двойной клик или клавиша <b>F</b> — полный экран</div>
+<script src="assets/shared.js"></script>
+<script>
+(function(){
+  'use strict';
+  const session = CS.uid();
+  const media = new Map();          // id -> {url, kind}
+  const loading = new Set();
+  const stage = new CS.Stage(document.getElementById('host'), { getMedia: id => media.get(id) || (want(id), null) });
+  let lastRev = null, lastLiveId = null, lastStyleJson = null, booted = false;
+
+  function want(id){
+    if (!id || media.has(id) || loading.has(id)) return;
+    loading.add(id);
+    CS.db.get(id).then(rec => { if (rec && rec.blob) addMedia(id, rec.blob, rec.kind); })
+      .catch(()=>{}).finally(()=>loading.delete(id));
+  }
+  function addMedia(id, blob, kind){
+    if (media.has(id)) return;
+    media.set(id, { url: URL.createObjectURL(blob), kind: kind || (blob.type.startsWith('video') ? 'video' : 'image') });
+    stage.mediaArrived();
+  }
+
+  function apply(state, fromBoot){
+    if (!state || state.rev === lastRev) return;
+    lastRev = state.rev;
+    stage.setSettings(state.settings);
+    const live = state.live;
+    if (!live) return;
+    const styleJson = JSON.stringify(live.style || {});
+    if (live.id !== lastLiveId) {
+      lastLiveId = live.id; lastStyleJson = styleJson;
+      stage.show(Object.assign({}, live, { logoId: state.logoId }), { animate: !fromBoot });
+    } else if (styleJson !== lastStyleJson) {
+      lastStyleJson = styleJson; stage.restyle(live.style);
+    }
+  }
+
+  // 1) восстановление после перезагрузки
+  apply(CS.lsGet(CS.KEY_STATE, null), true); booted = true;
+
+  // 2) прямой канал от пульта (postMessage)
+  window.addEventListener('message', e => {
+    const d = e.data; if (!d || d.cs !== 'state') return;
+    if (d.media) for (const id in d.media) { const m = d.media[id]; if (m && m.blob) addMedia(id, m.blob, m.kind); }
+    apply(d.state, false);
+  });
+  // 3) резервный канал через localStorage
+  window.addEventListener('storage', e => {
+    if (e.key === CS.KEY_STATE && e.newValue) { try { apply(JSON.parse(e.newValue), false); } catch(err){} }
+  });
+
+  // пульс для пульта
+  function ping(){
+    const msg = { cs: 'hello', session, have: [...media.keys()], t: Date.now() };
+    try { if (window.opener && !window.opener.closed) window.opener.postMessage(msg, '*'); } catch(e){}
+    CS.lsSet(CS.KEY_PING, msg);
+  }
+  ping(); setInterval(ping, 1500);
+
+  // полный экран
+  function toggleFs(){
+    if (document.fullscreenElement) document.exitFullscreen().catch(()=>{});
+    else document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(()=>{});
+  }
+  document.addEventListener('dblclick', toggleFs);
+  document.addEventListener('keydown', e => { if (e.code === 'KeyF') toggleFs(); });
+
+  // подсказка и курсор
+  const hint = document.getElementById('hint');
+  setTimeout(() => hint.classList.add('off'), 5000);
+  document.addEventListener('fullscreenchange', () => hint.classList.add('off'));
+  let ct; const hideCur = () => { document.body.classList.remove('hide-cursor'); clearTimeout(ct); ct = setTimeout(() => document.body.classList.add('hide-cursor'), 1800); };
+  document.addEventListener('mousemove', hideCur); hideCur();
+
+  // не давать экрану засыпать
+  let lock = null;
+  async function wake(){ try { if ('wakeLock' in navigator && document.visibilityState === 'visible') lock = await navigator.wakeLock.request('screen'); } catch(e){} }
+  wake(); document.addEventListener('visibilitychange', wake);
+})();
+</script>
+</body>
+</html>

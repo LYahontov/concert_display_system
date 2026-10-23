@@ -1,0 +1,99 @@
+/* ===== Сцена: общий рендер для экрана вывода и мониторов пульта ===== */
+.cs-root{position:absolute;inset:0;overflow:hidden;background:#000;container-type:size;contain:strict}
+.cs-world{position:absolute;inset:0}
+.cs-world.flip{transform:scaleX(-1)}
+.cs-bg{position:absolute;inset:0;background:var(--bg,#16182a);transition:background-color .4s ease}
+.cs-bg img,.cs-bg video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.cs-bg .cs-dim{position:absolute;inset:0;background:#000;opacity:var(--dim,0)}
+.cs-bg .media-in{animation:cs-fadein .6s ease both}
+
+.cs-stage{position:absolute;left:50%;top:50%;
+  width:min(100cqw,calc(100cqh * var(--ar,1.7778)));
+  height:min(100cqh,calc(100cqw / var(--ar,1.7778)));
+  transform:translate(-50%,-50%) translate(var(--ox,0%),var(--oy,0%)) scale(var(--sc,1));
+  container-type:size;overflow:hidden}
+.cs-stage.fill{width:100cqw;height:100cqh}
+.cs-stage .cs-bg{z-index:0}
+.cs-safe{position:absolute;inset:var(--safe,6%);z-index:2}
+.cs-layer{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;
+  transition:opacity var(--fo,350ms) ease}
+.cs-layer.out{opacity:0}
+
+/* ---- текст ---- */
+.cs-text{display:block;width:100%;white-space:pre-wrap;overflow-wrap:normal;word-break:normal;
+  color:var(--txt);font-kerning:normal;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased;
+  hyphens:manual}
+.cs-text .w{white-space:nowrap}
+
+/* стили-пресеты */
+.pr-shadow{filter:drop-shadow(0 .04em .06em var(--acc)) drop-shadow(0 .06em .25em var(--acc))}
+.pr-outline{-webkit-text-stroke:.09em var(--acc);paint-order:stroke fill}
+.pr-hollow{-webkit-text-stroke:.035em var(--txt);color:transparent !important}
+.cs-tw{position:relative;width:100%}
+.cs-tw.box{padding:.12em .3em}
+.cs-tw.box .cs-back{left:.3em;top:.12em;width:calc(100% - .6em)}
+.cs-front{position:relative}
+.cs-back{position:absolute;left:0;top:0;width:100%;color:transparent !important;text-shadow:none !important}
+.cs-back .ch.eol{background:none !important;box-shadow:none !important}
+.cs-back .ch{background:var(--acc);box-shadow:.22em 0 0 var(--acc),-.22em 0 0 var(--acc),0 .04em 0 var(--acc),0 -.04em 0 var(--acc)}
+.pr-neon{text-shadow:0 0 .03em #fff;filter:drop-shadow(0 0 .05em var(--txt)) drop-shadow(0 0 .25em color-mix(in srgb,var(--txt) 55%,transparent))}
+.pr-glow{filter:drop-shadow(0 0 .12em var(--acc)) drop-shadow(0 0 .4em var(--acc))}
+.pr-retro{text-shadow:.05em .05em 0 var(--acc),.1em .1em 0 color-mix(in srgb,var(--acc) 55%,transparent)}
+
+/* побуквенные эффекты */
+.fx-type .ch{visibility:hidden}
+.fx-type .ch.in{visibility:visible}
+.fx-letters .ch{opacity:0;transition:opacity var(--lf,250ms) ease}
+.fx-letters .ch.in{opacity:1}
+.fx-up .ch{position:relative;opacity:0;top:.45em;transition:opacity var(--lf,250ms) ease,top var(--lf,250ms) cubic-bezier(.2,.8,.2,1)}
+.fx-up .ch.in{opacity:1;top:0}
+.fx-blurl .ch{opacity:0;filter:blur(.25em);transition:opacity var(--lf,250ms) ease,filter var(--lf,250ms) ease}
+.fx-blurl .ch.in{opacity:1;filter:blur(0)}
+.fx-blurl .ch.done{filter:none;transition:none}
+
+/* эффекты целиком */
+.cs-layer.anim-fade{animation:cs-fadein var(--dur,900ms) ease both}
+.cs-layer.anim-rise{animation:cs-rise var(--dur,900ms) cubic-bezier(.2,.8,.2,1) both}
+.cs-layer.anim-zoom{animation:cs-zoom var(--dur,900ms) cubic-bezier(.2,.8,.2,1) both}
+.cs-layer.anim-blur{animation:cs-blur var(--dur,900ms) ease both}
+.cs-layer.anim-flicker{animation:cs-flicker var(--dur,900ms) linear both}
+@keyframes cs-fadein{from{opacity:0}to{opacity:1}}
+@keyframes cs-rise{from{opacity:0;transform:translateY(12%)}to{opacity:1;transform:none}}
+@keyframes cs-zoom{from{opacity:0;transform:scale(.82)}to{opacity:1;transform:none}}
+@keyframes cs-blur{from{opacity:0;filter:blur(2.5cqh)}to{opacity:1;filter:none}}
+@keyframes cs-flicker{0%{opacity:0}8%{opacity:.9}10%{opacity:.1}18%{opacity:1}22%{opacity:.2}30%{opacity:1}55%{opacity:.6}58%{opacity:1}100%{opacity:1}}
+
+/* курсор */
+.cs-cur{display:inline-block;width:0;height:1em;position:relative;vertical-align:baseline}
+.cs-cur::after{content:"";position:absolute;background:var(--txt);border-radius:.02em}
+.cs-cur.cur-bar::after{left:.04em;bottom:-.14em;width:.075em;height:1.02em}
+.cs-cur.cur-block::after{left:.05em;bottom:-.14em;width:.55em;height:1.02em;opacity:.85}
+.cs-cur.cur-under::after{left:.05em;bottom:-.16em;width:.55em;height:.09em}
+.pr-box .cs-cur::after{background:var(--txt)}
+.cs-cur.blink::after{animation:cs-blink 1.05s steps(1) infinite}
+.cs-cur.gone{opacity:0;transition:opacity .5s ease}
+@keyframes cs-blink{0%{opacity:1}50%{opacity:0}}
+
+/* медиа как контент */
+.cs-media{max-width:100%;max-height:100%;object-fit:contain;display:block}
+
+/* затемнение */
+.cs-black{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none;z-index:50;
+  transition:opacity var(--bo,400ms) ease}
+.cs-black.on{opacity:1}
+
+/* сетка калибровки */
+.cs-grid{position:absolute;inset:0;z-index:40;pointer-events:none;display:none;
+  outline:.4cqh solid #38f27a;outline-offset:-.4cqh;
+  background:
+   linear-gradient(#38f27a,#38f27a) 50% 0/.25cqh 100% no-repeat,
+   linear-gradient(#38f27a,#38f27a) 0 50%/100% .25cqh no-repeat,
+   linear-gradient(rgba(56,242,122,.45),rgba(56,242,122,.45)) 33.333% 0/.15cqh 100% no-repeat,
+   linear-gradient(rgba(56,242,122,.45),rgba(56,242,122,.45)) 66.666% 0/.15cqh 100% no-repeat,
+   linear-gradient(rgba(56,242,122,.45),rgba(56,242,122,.45)) 0 33.333%/100% .15cqh no-repeat,
+   linear-gradient(rgba(56,242,122,.45),rgba(56,242,122,.45)) 0 66.666%/100% .15cqh no-repeat}
+.cs-grid.on{display:block}
+.cs-grid .cs-gsafe{position:absolute;inset:var(--safe,6%);border:.3cqh dashed #ffd23f}
+.cs-grid .cs-glbl{position:absolute;left:2cqh;top:2cqh;font:600 3.2cqh/1.2 Inter,system-ui,sans-serif;color:#38f27a;
+  background:rgba(0,0,0,.6);padding:.6cqh 1.2cqh;border-radius:.6cqh}
+.cs-grid .cs-gcirc{position:absolute;left:50%;top:50%;width:60cqh;height:60cqh;margin:-30cqh 0 0 -30cqh;border:.25cqh solid #38f27a;border-radius:50%}

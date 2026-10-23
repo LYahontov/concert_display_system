@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Пульт — Concert Screen</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="assets/stage.css">
+<style>
+:root{
+  --bg:#0c0d11;--panel:#14161c;--panel2:#1b1e26;--line:#272a35;--line2:#343846;
+  --tx:#e9eaf0;--mut:#8a8fa3;--dim:#5d6274;--acc:#ffb020;--acc-tx:#1a1200;
+  --red:#ff4a4a;--green:#35d07f;--blue:#5aa2ff;--r:10px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);
+  font:14px/1.35 Inter,system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+body{display:grid;grid-template-rows:auto 1fr auto;overflow:hidden}
+button,select,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+::selection{background:var(--acc);color:var(--acc-tx)}
+
+/* ---------- шапка ---------- */
+header{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--panel)}
+.brand{font:800 13px/1 Unbounded,Inter,sans-serif;letter-spacing:.08em;color:var(--acc);margin-right:4px;white-space:nowrap}
+.pill{display:flex;align-items:center;gap:7px;padding:6px 11px;border-radius:99px;background:var(--panel2);border:1px solid var(--line);
+  font-size:12.5px;color:var(--mut);white-space:nowrap}
+.pill i{width:8px;height:8px;border-radius:50%;background:var(--dim)}
+.pill.ok{color:var(--tx)} .pill.ok i{background:var(--green);box-shadow:0 0 8px var(--green)}
+.spacer{flex:1}
+.btn{height:36px;padding:0 14px;border-radius:8px;border:1px solid var(--line2);background:var(--panel2);display:inline-flex;align-items:center;gap:7px;
+  font-weight:600;font-size:13px;white-space:nowrap;transition:background .15s,border-color .15s}
+.btn:hover{background:#232733;border-color:#454a5c}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--acc);border-color:var(--acc);color:var(--acc-tx)}
+.btn.primary:hover{background:#ffc04a}
+.btn.sm{height:30px;padding:0 10px;font-size:12.5px}
+.btn.xs{height:26px;padding:0 8px;font-size:12px;border-radius:6px}
+.btn.icon{width:30px;padding:0;justify-content:center}
+.btn:disabled{opacity:.4;cursor:default}
+.big{height:44px;padding:0 18px;font-size:14px;font-weight:700;letter-spacing:.04em;border-radius:10px}
+.big kbd{opacity:.55;font-weight:500}
+.big.on{background:var(--blue);border-color:var(--blue);color:#001226}
+.big.black{background:#2a0e0e;border-color:#5a1d1d;color:#ffb3b3}
+.big.black.on{background:var(--red);border-color:var(--red);color:#fff;box-shadow:0 0 0 3px rgba(255,74,74,.25)}
+kbd{font:500 11px/1 Inter,sans-serif;padding:2px 5px;border-radius:4px;background:rgba(255,255,255,.08);color:inherit}
+
+.seg{display:inline-flex;background:var(--panel2);border:1px solid var(--line2);border-radius:8px;padding:2px;gap:2px}
+.seg button{border:0;background:transparent;height:30px;padding:0 10px;border-radius:6px;font-weight:600;font-size:12.5px;color:var(--mut)}
+.seg button.on{background:#2c3140;color:var(--tx)}
+.seg.lang button{height:38px;padding:0 20px;font-size:15px;letter-spacing:.05em}
+.seg.lang button.on{background:var(--acc);color:var(--acc-tx)}
+
+/* ---------- основная сетка ---------- */
+main{display:grid;grid-template-columns:330px 1fr 360px;min-height:0}
+.col{min-height:0;overflow:auto;border-right:1px solid var(--line)}
+.col:last-child{border-right:0;border-left:1px solid var(--line)}
+.col::-webkit-scrollbar{width:8px}.col::-webkit-scrollbar-thumb{background:#2a2e3a;border-radius:4px}
+.sec{padding:14px 16px;border-bottom:1px solid var(--line)}
+.sec h3{margin:0 0 12px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
+.row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.row:last-child{margin-bottom:0}
+.row label,.lbl{font-size:12.5px;color:var(--mut);min-width:0}
+.row .grow{flex:1}
+.stack{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.stack:last-child{margin-bottom:0}
+.stack .head{display:flex;justify-content:space-between;align-items:baseline}
+.stack .head output{font-variant-numeric:tabular-nums;font-size:12.5px;color:var(--tx)}
+select,input[type=text]{height:34px;border-radius:8px;border:1px solid var(--line2);background:var(--panel2);padding:0 10px;width:100%;outline:none}
+select:focus,input[type=text]:focus{border-color:var(--acc)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:22px;background:transparent}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:#2b2f3c}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--tx);margin-top:-6px;border:0}
+input[type=range]:focus::-webkit-slider-thumb{background:var(--acc)}
+input[type=color]{-webkit-appearance:none;width:44px;height:34px;border:1px solid var(--line2);border-radius:8px;background:var(--panel2);padding:3px;cursor:pointer}
+input[type=color]::-webkit-color-swatch-wrapper{padding:0}input[type=color]::-webkit-color-swatch{border:0;border-radius:5px}
+.sample{height:42px;display:flex;align-items:center;padding:0 10px;border-radius:8px;background:#0f1015;border:1px dashed var(--line2);
+  font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tog{height:36px;min-width:42px;border-radius:8px;border:1px solid var(--line2);background:var(--panel2);font-weight:600;font-size:15px}
+.tog.on{background:var(--acc);border-color:var(--acc);color:var(--acc-tx)}
+.sws{display:flex;gap:5px;flex-wrap:wrap}
+.sws button{width:22px;height:22px;border-radius:6px;border:1px solid rgba(255,255,255,.18);padding:0}
+.chips{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.chips button{height:46px;border-radius:8px;border:1px solid var(--line2);background:#0f1015;font:700 15px/1 Inter,sans-serif;color:#fff;position:relative;overflow:hidden}
+.chips button small{position:absolute;bottom:3px;left:0;right:0;font:500 9.5px/1 Inter,sans-serif;color:var(--mut);letter-spacing:.02em}
+.chips button span{display:block;margin-top:-8px}
+.chips button.on{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
+.switch{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;cursor:pointer;user-select:none}
+.switch span{font-size:12.5px;color:var(--mut)}
+.switch input{appearance:none;-webkit-appearance:none;width:36px;height:20px;border-radius:99px;background:#2b2f3c;position:relative;transition:background .15s;flex:none;cursor:pointer;margin:0}
+.switch input::after{content:"";position:absolute;left:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#cfd2dc;transition:transform .15s}
+.switch input:checked{background:var(--acc)}.switch input:checked::after{transform:translateX(16px);background:#fff}
+.hidden{display:none !important}
+
+/* ---------- центр ---------- */
+.center{display:flex;flex-direction:column;min-height:0;overflow:auto;padding:14px;gap:14px}
+.monitors{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.mon{display:flex;flex-direction:column;gap:7px;min-width:0}
+.mon .bar{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
+.mon .bar .tag{padding:3px 7px;border-radius:5px;background:var(--panel2);font-size:10.5px}
+.mon.live .bar .tag{background:var(--red);color:#fff}
+.mon .bar .r{margin-left:auto;display:flex;gap:6px;letter-spacing:0;text-transform:none;font-weight:500}
+.screen{position:relative;aspect-ratio:16/9;border-radius:8px;overflow:hidden;border:1px solid var(--line2);background:#000}
+.mon.live .screen{border-color:rgba(255,74,74,.6);box-shadow:0 0 0 1px rgba(255,74,74,.25)}
+.screen .ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.35);font-size:13px;z-index:60;pointer-events:none}
+.mon .meta{font-size:12px;color:var(--mut);min-height:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.composer{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.composer .top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+#input{width:100%;min-height:150px;resize:vertical;border-radius:10px;border:1px solid var(--line2);background:#0f1015;
+  padding:14px 16px;font-size:22px;line-height:1.35;outline:none}
+#input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(255,176,32,.12)}
+.editbar{display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:8px;background:rgba(255,176,32,.12);border:1px solid rgba(255,176,32,.45);font-size:13.5px}
+.editbar b{color:var(--acc)}
+.composer.editing{border-color:rgba(255,176,32,.45)}
+.qi.editing{outline:2px dashed var(--acc);outline-offset:1px}
+.composer .bottom{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.warn{font-size:12.5px;color:var(--acc);display:flex;align-items:center;gap:8px}
+.muted{color:var(--mut);font-size:12.5px}
+
+/* ---------- правая колонка ---------- */
+.tabs{display:flex;gap:2px;padding:10px 12px 0;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:2}
+.tabs button{border:0;background:transparent;padding:9px 12px;font-weight:600;font-size:13px;color:var(--mut);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button.on{color:var(--tx);border-bottom-color:var(--acc)}
+.tabs button b{font-weight:600;font-size:11px;color:var(--mut);margin-left:3px}
+.qlist{display:flex;flex-direction:column;gap:6px}
+.qi{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:start;padding:9px 10px;border-radius:9px;background:var(--panel);border:1px solid var(--line);cursor:pointer}
+.qi:hover{border-color:var(--line2)}
+.qi.ptr{border-color:var(--acc);box-shadow:inset 3px 0 0 var(--acc)}
+.qi.sent .txt{opacity:.45}
+.autobtn{background:#12351f;border-color:#1f6b3d;color:#7ff0b0}
+.autobtn:hover{background:#174628;border-color:#2a8a50}
+.autobtn.on{background:var(--green);border-color:var(--green);color:#002611}
+.autostat{font-size:12.5px;color:var(--mut);min-height:34px;line-height:1.4}
+.autostat b{color:var(--tx);font-weight:600}
+.autostat .pbar{height:3px;border-radius:2px;background:#2b2f3c;margin-top:6px;overflow:hidden}
+.autostat .pbar i{display:block;height:100%;background:var(--green);width:0}
+.qi .n:hover{color:var(--acc)}
+.qi.autonow{box-shadow:inset 3px 0 0 var(--green)}
+.qi .n{cursor:pointer;font-size:11.5px;color:var(--mut);font-variant-numeric:tabular-nums;padding-top:2px}
+.qi .txt{white-space:pre-wrap;word-break:break-word;font-size:13.5px;max-height:5.4em;overflow:hidden}
+.qi .lg{font-size:10px;font-weight:700;color:var(--mut);letter-spacing:.06em;margin-right:5px}
+.qi .act{display:flex;gap:3px;opacity:.55}
+.qi:hover .act{opacity:1}
+.empty{padding:22px 10px;text-align:center;color:var(--dim);font-size:13px;border:1px dashed var(--line2);border-radius:10px}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mi{border-radius:9px;background:var(--panel);border:1px solid var(--line);overflow:hidden;display:flex;flex-direction:column}
+.mi .th{aspect-ratio:16/10;background:#000;position:relative}
+.mi .th img,.mi .th video{width:100%;height:100%;object-fit:cover;display:block}
+.mi .badges{position:absolute;left:5px;top:5px;display:flex;gap:4px}
+.mi .badges span{font-size:9.5px;font-weight:700;padding:2px 5px;border-radius:4px;background:rgba(0,0,0,.7);letter-spacing:.04em}
+.mi .badges .b-live{background:var(--red)}.mi .badges .b-bg{background:var(--blue);color:#001226}.mi .badges .b-logo{background:var(--acc);color:var(--acc-tx)}
+.mi .nm{font-size:11.5px;color:var(--mut);padding:6px 8px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mi .ac{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:4px;padding:6px}
+.mi .ac .btn{justify-content:center;padding:0 4px}
+.drop{border:1.5px dashed var(--line2);border-radius:10px;padding:16px;text-align:center;color:var(--mut);font-size:13px;cursor:pointer;margin-bottom:12px}
+.drop:hover{border-color:var(--acc);color:var(--tx)}
+#dragover{position:fixed;inset:0;background:rgba(255,176,32,.12);border:3px dashed var(--acc);z-index:200;display:none;align-items:center;justify-content:center;
+  font:700 22px/1 Inter,sans-serif;color:var(--acc);pointer-events:none}
+#dragover.on{display:flex}
+
+/* ---------- история ---------- */
+.hwrap{position:relative}
+#hpanel{position:absolute;right:0;top:44px;width:420px;max-height:70vh;overflow:auto;background:var(--panel);border:1px solid var(--line2);border-radius:12px;
+  box-shadow:0 20px 60px rgba(0,0,0,.6);z-index:100;padding:8px}
+#hpanel .hh{display:flex;align-items:center;justify-content:space-between;padding:4px 6px 8px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
+.hi{display:grid;grid-template-columns:44px 1fr auto;gap:8px;align-items:center;padding:7px 8px;border-radius:8px}
+.hi:hover{background:var(--panel2)}
+.hi .t{font-size:11.5px;color:var(--mut);font-variant-numeric:tabular-nums}
+.hi .x{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hi .x em{font-style:normal;color:var(--mut);font-size:11.5px;margin-right:6px}
+.hi .a{display:flex;gap:4px}
+
+footer{display:flex;gap:18px;align-items:center;padding:7px 14px;border-top:1px solid var(--line);background:var(--panel);font-size:11.5px;color:var(--mut);overflow:hidden;white-space:nowrap}
+footer span{display:inline-flex;gap:6px;align-items:center}
+#toast{position:fixed;left:50%;bottom:50px;transform:translateX(-50%) translateY(20px);opacity:0;transition:.25s;background:#2a2e3a;border:1px solid var(--line2);
+  padding:11px 16px;border-radius:10px;z-index:300;max-width:560px;font-size:13.5px;pointer-events:none}
+#toast.on{opacity:1;transform:translateX(-50%)}
+dialog{background:var(--panel);color:var(--tx);border:1px solid var(--line2);border-radius:14px;padding:18px;width:560px;max-width:92vw}
+dialog::backdrop{background:rgba(0,0,0,.6)}
+dialog textarea{width:100%;height:280px;border-radius:10px;border:1px solid var(--line2);background:#0f1015;padding:12px;font-size:14px;resize:vertical;outline:none}
+@media (max-width:1300px){main{grid-template-columns:300px 1fr 320px}.big{padding:0 12px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">CONCERT&nbsp;SCREEN</div>
+  <div class="pill" id="status"><i></i><span>Экран не подключён</span></div>
+  <button class="btn primary" id="openOut">Открыть экран вывода</button>
+  <div class="seg" data-s="settings.aspect" title="Формат кадра">
+    <button data-v="16:9">16:9</button><button data-v="16:10">16:10</button><button data-v="4:3">4:3</button><button data-v="fill">Весь экран</button>
+  </div>
+  <div class="spacer"></div>
+  <div class="hwrap">
+    <button class="btn" id="hbtn">История ▾</button>
+    <div id="hpanel" class="hidden"></div>
+  </div>
+  <button class="btn big" id="bLogo" title="⌥G">ЛОГО <kbd>⌥G</kbd></button>
+  <button class="btn big" id="bEmpty" title="⌥E">ПУСТО <kbd>⌥E</kbd></button>
+  <button class="btn big black" id="bBlack" title="⌥B">ЗАТЕМНИТЬ <kbd>⌥B</kbd></button>
+</header>
+
+<main>
+  <!-- ===== левая колонка: стиль текста ===== -->
+  <div class="col" id="left">
+    <div class="sec">
+      <h3>Язык сообщения</h3>
+      <div class="row"><div class="seg lang" data-s="style.lang"><button data-v="ru">RU</button><button data-v="en">EN</button></div>
+        <span class="muted">⌥L — переключить</span></div>
+    </div>
+    <div class="sec">
+      <h3>Шрифты</h3>
+      <div class="stack"><div class="head"><span class="lbl">Русский текст</span></div>
+        <select data-s="style.fontRu" id="fontRu"></select><div class="sample" id="sampleRu">Съешь же ещё этих булок</div></div>
+      <div class="stack"><div class="head"><span class="lbl">Английский текст</span></div>
+        <select data-s="style.fontEn" id="fontEn"></select><div class="sample" id="sampleEn">Sphinx of black quartz</div></div>
+      <div class="row">
+        <button class="tog" data-s="style.bold" data-toggle title="⌘B"><b>B</b></button>
+        <button class="tog" data-s="style.italic" data-toggle title="⌘I"><i style="font-family:Georgia,serif">I</i></button>
+        <button class="tog" data-s="style.upper" data-toggle title="Заглавные">AA</button>
+        <div class="grow"></div>
+        <input type="color" data-s="style.color" title="Цвет текста">
+      </div>
+      <div class="sws" data-sw="style.color"></div>
+    </div>
+    <div class="sec">
+      <h3>Размер и ритм</h3>
+      <div class="row"><div class="seg" data-s="style.sizeMode"><button data-v="auto">Авто по экрану</button><button data-v="manual">Вручную</button></div></div>
+      <div class="stack" data-when="auto"><div class="head"><span class="lbl">Максимальный размер</span><output data-out="style.maxSize"></output></div>
+        <input type="range" data-s="style.maxSize" min="4" max="60" step="1"></div>
+      <div class="stack" data-when="manual"><div class="head"><span class="lbl">Размер</span><output data-out="style.size"></output></div>
+        <input type="range" data-s="style.size" min="2" max="60" step="0.5"></div>
+      <div class="stack"><div class="head"><span class="lbl">Межстрочный</span><output data-out="style.lineHeight"></output></div>
+        <input type="range" data-s="style.lineHeight" min="0.8" max="2" step="0.05"></div>
+      <div class="stack"><div class="head"><span class="lbl">Трекинг</span><output data-out="style.letterSpacing"></output></div>
+        <input type="range" data-s="style.letterSpacing" min="-10" max="40" step="1"></div>
+    </div>
+    <div class="sec">
+      <h3>Стиль надписи</h3>
+      <div class="chips" id="presets"></div>
+      <div class="row" style="margin-top:10px"><span class="lbl grow">Цвет обводки / тени / плашки</span><input type="color" data-s="style.accent"></div>
+      <div class="sws" data-sw="style.accent"></div>
+    </div>
+    <div class="sec">
+      <h3>Анимация появления</h3>
+      <div class="stack"><select data-s="style.effect">
+        <optgroup label="Побуквенно">
+          <option value="type">Печатная машинка</option>
+          <option value="letters">Буквы проявляются</option>
+          <option value="up">Буквы всплывают</option>
+          <option value="blurl">Буквы из размытия</option>
+        </optgroup>
+        <optgroup label="Целиком">
+          <option value="fade">Плавное появление</option>
+          <option value="rise">Выезд снизу</option>
+          <option value="zoom">Приближение</option>
+          <option value="blur">Из размытия</option>
+          <option value="flicker">Мерцание (неон)</option>
+          <option value="none">Мгновенно</option>
+        </optgroup>
+      </select></div>
+      <div class="stack" data-when="letter"><div class="head"><span class="lbl">Скорость печати</span><output data-out="style.speed"></output></div>
+        <input type="range" data-s="style.speed" min="5" max="300" step="5"></div>
+      <div class="stack" data-when="soft"><div class="head"><span class="lbl">Проявление одной буквы</span><output data-out="style.letterFade"></output></div>
+        <input type="range" data-s="style.letterFade" min="50" max="1500" step="25"></div>
+      <div class="stack" data-when="whole"><div class="head"><span class="lbl">Длительность</span><output data-out="style.duration"></output></div>
+        <input type="range" data-s="style.duration" min="100" max="4000" step="50"></div>
+      <label class="switch" data-when="letter"><span>Живой ритм (паузы на знаках препинания)</span><input type="checkbox" data-s="style.jitter"></label>
+      <label class="switch"><span>Мигающий курсор</span><input type="checkbox" data-s="style.cursor"></label>
+      <div data-when="cursor">
+        <div class="row"><span class="lbl" style="width:80px">Форма</span>
+          <div class="seg" data-s="style.cursorShape"><button data-v="bar">▏ Черта</button><button data-v="block">█ Блок</button><button data-v="under">_ Низ</button></div></div>
+        <div class="row"><span class="lbl" style="width:80px">После</span>
+          <div class="seg" data-s="style.cursorAfter"><button data-v="blink">Мигает</button><button data-v="solid">Горит</button><button data-v="hide">Гаснет</button></div></div>
+      </div>
+    </div>
+    <div class="sec">
+      <button class="btn" id="applyLive" style="width:100%;justify-content:center">Применить стиль к тексту в эфире</button>
+      <div class="muted" style="margin-top:8px">Меняет оформление текущего текста на экране без повторной анимации.</div>
+    </div>
+  </div>
+
+  <!-- ===== центр ===== -->
+  <div class="center">
+    <div class="monitors">
+      <div class="mon">
+        <div class="bar"><span class="tag">Превью</span>черновик<div class="r"><button class="btn xs" id="playPrev" title="⌥P">▶ Проиграть</button></div></div>
+        <div class="screen" id="prevScreen"><div class="ph" id="prevPh">Начните печатать — здесь будет превью</div></div>
+        <div class="meta" id="prevMeta"></div>
+      </div>
+      <div class="mon live">
+        <div class="bar"><span class="tag">● Эфир</span>на проекторе<div class="r"><button class="btn xs" id="replay" title="⌥R">↻ Повторить</button></div></div>
+        <div class="screen" id="liveScreen"></div>
+        <div class="meta" id="liveMeta"></div>
+      </div>
+    </div>
+
+    <div class="composer">
+      <div class="editbar hidden" id="editBar"><span>✎ Правка сообщения <b id="editN"></b> из очереди</span><span class="muted">Enter — сохранить · Esc — отмена</span>
+        <div class="spacer"></div><button class="btn sm primary" id="editSave">Сохранить</button><button class="btn sm" id="editCancel">Отмена</button></div>
+      <textarea id="input" spellcheck="false" placeholder="Пишите или вставьте текст.  Enter — на экран,  Shift+Enter — новая строка,  ⌘Enter — в очередь"></textarea>
+      <div class="bottom">
+        <button class="btn primary big" id="send">НА ЭКРАН <kbd style="background:rgba(0,0,0,.12)">Enter</kbd></button>
+        <button class="btn" id="toQueue">В очередь <kbd>⌘Enter</kbd></button>
+        <label class="switch" style="margin:0 0 0 6px;gap:8px"><span>Очищать после отправки</span><input type="checkbox" id="clearAfter" checked></label>
+        <div class="spacer"></div>
+        <div class="warn hidden" id="langWarn"></div>
+        <span class="muted" id="count"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== правая колонка ===== -->
+  <div class="col" id="right">
+    <div class="tabs">
+      <button data-tab="queue" class="on">Очередь <b id="qcount"></b></button>
+      <button data-tab="media">Медиа <b id="mcount"></b></button>
+      <button data-tab="screen">Экран</button>
+    </div>
+
+    <div data-pane="queue">
+      <div class="sec">
+        <div class="row">
+          <button class="btn primary" id="qNext" style="flex:1;justify-content:center">▶ Следующий <kbd style="background:rgba(0,0,0,.12)">⌥↓</kbd></button>
+          <button class="btn" id="qPrev" title="Шаг назад ⌥↑">↑</button>
+        </div>
+        <div class="row">
+          <button class="btn sm" id="qBulk">+ Вставить списком</button>
+          <button class="btn sm" id="qReset">Сначала</button>
+          <div class="spacer"></div>
+          <button class="btn sm" id="qClear">Очистить</button>
+        </div>
+      </div>
+      <div class="sec">
+        <h3>Автопоказ</h3>
+        <div class="row"><button class="btn big autobtn" id="autoBtn" style="flex:1;justify-content:center"></button></div>
+        <div class="row"><div class="seg" id="autoMode"><button data-v="end">До конца списка</button><button data-v="loop">По кругу</button></div></div>
+        <div class="stack"><div class="head"><span class="lbl">Показывать после появления</span><output id="autoHoldOut"></output></div>
+          <input type="range" id="autoHold" min="1" max="60" step="0.5"></div>
+        <div class="autostat" id="autoStatus"></div>
+      </div>
+      <div class="sec"><div class="qlist" id="qlist"></div></div>
+    </div>
+
+    <div data-pane="media" class="hidden">
+      <div class="sec">
+        <div class="drop" id="drop">Перетащите картинки или видео сюда<br>или <u>выберите файлы</u></div>
+        <input type="file" id="file" accept="image/*,video/*" multiple class="hidden">
+        <div class="mgrid" id="mgrid"></div>
+        <div class="muted" style="margin-top:10px">«Эфир» — показать вместо текста. «Фон» — поставить фоном. «Лого» — назначить логотипом для кнопки ЛОГО.</div>
+      </div>
+    </div>
+
+    <div data-pane="screen" class="hidden">
+      <div class="sec">
+        <h3>Фон</h3>
+        <div class="row"><span class="lbl grow">Цвет фона</span><input type="color" data-s="settings.bgColor"></div>
+        <div class="sws" data-sw="settings.bgColor" style="margin-bottom:12px"></div>
+        <div class="row" id="bgMediaRow"><span class="lbl grow" id="bgMediaName">Медиа-фон не выбран</span><button class="btn xs" id="bgClear">Убрать</button></div>
+        <div class="stack"><div class="head"><span class="lbl">Затемнение медиа-фона</span><output data-out="settings.bgDim"></output></div>
+          <input type="range" data-s="settings.bgDim" min="0" max="95" step="1"></div>
+        <label class="switch"><span>Фон на всю площадь проектора (иначе только в кадре)</span><input type="checkbox" data-s="settings.bgFull"></label>
+      </div>
+      <div class="sec">
+        <h3>Калибровка под проектор</h3>
+        <label class="switch"><span>Показать сетку на экране</span><input type="checkbox" data-s="settings.grid"></label>
+        <label class="switch"><span>Отразить по горизонтали (проекция сзади ткани)</span><input type="checkbox" data-s="settings.flipH"></label>
+        <div class="stack"><div class="head"><span class="lbl">Поля от краёв</span><output data-out="settings.safe"></output></div>
+          <input type="range" data-s="settings.safe" min="0" max="30" step="0.5"></div>
+        <div class="stack"><div class="head"><span class="lbl">Сдвиг по вертикали</span><output data-out="settings.offsetY"></output></div>
+          <input type="range" data-s="settings.offsetY" min="-40" max="40" step="0.5"></div>
+        <div class="stack"><div class="head"><span class="lbl">Сдвиг по горизонтали</span><output data-out="settings.offsetX"></output></div>
+          <input type="range" data-s="settings.offsetX" min="-40" max="40" step="0.5"></div>
+        <div class="stack"><div class="head"><span class="lbl">Масштаб кадра</span><output data-out="settings.scale"></output></div>
+          <input type="range" data-s="settings.scale" min="40" max="130" step="1"></div>
+        <button class="btn sm" id="calReset">Сбросить калибровку</button>
+      </div>
+      <div class="sec">
+        <h3>Переходы и медиа</h3>
+        <div class="stack"><div class="head"><span class="lbl">Исчезновение предыдущего</span><output data-out="settings.fadeOut"></output></div>
+          <input type="range" data-s="settings.fadeOut" min="0" max="2000" step="50"></div>
+        <div class="stack"><div class="head"><span class="lbl">Размер логотипа</span><output data-out="settings.logoSize"></output></div>
+          <input type="range" data-s="settings.logoSize" min="10" max="100" step="1"></div>
+        <div class="stack"><div class="head"><span class="lbl">Размер картинки в эфире</span><output data-out="settings.imageSize"></output></div>
+          <input type="range" data-s="settings.imageSize" min="10" max="100" step="1"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <span><kbd>Enter</kbd> на экран</span><span><kbd>⇧Enter</kbd> строка</span><span><kbd>⌘Enter</kbd> в очередь</span>
+  <span><kbd>⌥↓</kbd> следующий</span><span><kbd>⌥A</kbd> автопоказ</span><span><kbd>⌥L</kbd> RU/EN</span><span><kbd>⌘B</kbd>/<kbd>⌘I</kbd> жирный/курсив</span>
+  <span><kbd>⌥P</kbd> превью</span><span><kbd>⌥R</kbd> повтор</span><span><kbd>⌥B</kbd> затемнить</span><span><kbd>⌥E</kbd> пусто</span><span><kbd>⌥G</kbd> лого</span>
+</footer>
+
+<dialog id="bulkDlg">
+  <div style="font-weight:700;margin-bottom:6px">Вставить список сообщений</div>
+  <div class="muted" style="margin-bottom:10px">Каждое сообщение отделяйте пустой строкой. Переносы внутри сообщения сохранятся. Язык определяется автоматически.</div>
+  <textarea id="bulkText" placeholder="Первое сообщение&#10;&#10;Второе сообщение&#10;в две строки&#10;&#10;Third message"></textarea>
+  <div class="row" style="margin-top:12px;justify-content:flex-end"><button class="btn" id="bulkCancel">Отмена</button><button class="btn primary" id="bulkOk">Добавить</button></div>
+</dialog>
+<div id="dragover">Отпустите, чтобы добавить в медиа</div>
+<div id="toast"></div>
+
+<script src="fonts/fonts.js"></script>
+<script src="assets/shared.js"></script>
+<script src="assets/control.js"></script>
+</body>
+</html>
