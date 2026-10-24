@@ -112,9 +112,9 @@
   /* ---------- отправка ---------- */
   function goLive(l, opts) {
     opts = opts || {};
-    if (autoOn && !opts.auto) stopAuto('Автопоказ остановлен: на экран выведено другое');
     if (l.mode !== 'black') beforeBlack = null;
     live = Object.assign({}, l, { id: CS.uid() });
+    if (autoOn && !opts.auto) autoInterrupt(l.mode, opts.restore);
     if (!opts.noHistory && (l.mode === 'text' || l.mode === 'image' || l.mode === 'logo')) {
       history.unshift({ t: Date.now(), live: clone(live) });
       if (history.length > 300) history.length = 300;
@@ -138,7 +138,7 @@
   function toggleBlack() {
     if (live.mode === 'black') {
       const back = beforeBlack; beforeBlack = null;
-      goLive(back && back.mode !== 'black' ? Object.assign({}, back, { id: undefined }) : { mode: 'empty' }, { noHistory: true });
+      goLive(back && back.mode !== 'black' ? Object.assign({}, back, { id: undefined }) : { mode: 'empty' }, { noHistory: true, restore: true });
     } else { const prev = clone(live); goLive({ mode: 'black' }); beforeBlack = prev; save(); }
   }
   function replay() { if (live.mode === 'black') return; goLive(Object.assign({}, clone(live), { id: CS.uid() }), { noHistory: true }); }
@@ -281,7 +281,7 @@
     qptr = CS.clamp(qptr, 0, queue.length);
     const L = $('#qlist');
     if (!queue.length) { L.innerHTML = '<div class="empty">Очередь пуста.<br>Добавьте сообщение через ⌘Enter или «Вставить списком».</div>'; return; }
-    L.innerHTML = queue.map((q, i) => `<div class="qi ${i === qptr ? 'ptr' : ''} ${autoOn && q.id === autoShownId ? 'autonow' : ''} ${i < qptr ? 'sent' : ''} ${q.id === editId ? 'editing' : ''}" data-i="${i}" title="Клик — редактировать">
+    L.innerHTML = queue.map((q, i) => `<div class="qi ${i === qptr ? 'ptr' : ''} ${autoOn && !autoInsert && q.id === autoShownId ? 'autonow' : ''} ${i < qptr ? 'sent' : ''} ${q.id === editId ? 'editing' : ''}" data-i="${i}" title="Клик — редактировать">
       <div class="n" title="Начать отсюда">${i + 1}</div>
       <div class="txt"><span class="lg">${(q.lang || 'ru').toUpperCase()}</span>${esc(q.text)}</div>
       <div class="act"><button class="btn xs icon" data-a="go" title="Сразу на экран">▶</button><button class="btn xs icon" data-a="edit" title="Редактировать">✎</button><button class="btn xs icon" data-a="up" title="Выше">↑</button><button class="btn xs icon" data-a="down" title="Ниже">↓</button><button class="btn xs icon" data-a="del" title="Удалить">✕</button></div>
@@ -328,6 +328,7 @@
   /* ---------- автопоказ очереди ---------- */
   let auto = CS.merge({ mode: 'end', hold: 4 }, CS.lsGet('cs-ctl-auto', null));
   let autoOn = false, autoAwaiting = false, autoTimer = null, autoNextAt = 0, autoShownId = null, autoHoldMs = 0;
+  let autoPaused = false, autoInsert = false;
   const saveAuto = () => CS.lsSet('cs-ctl-auto', auto);
   function startAuto() {
     if (!queue.length) { toast('Очередь пуста'); return; }
@@ -336,7 +337,7 @@
       if (auto.mode === 'loop') qptr = 0;
       else { toast('Указатель в конце списка. Кликните номер сообщения, с которого начать.', 4500); return; }
     }
-    autoOn = true; autoStep();
+    autoOn = true; autoPaused = false; autoInsert = false; autoStep();
   }
   function autoStep() {
     if (!autoOn) return;
@@ -346,7 +347,7 @@
       else { stopAuto('Автопоказ: список закончился'); return; }
     }
     const q = queue[qptr]; qptr++; save();
-    autoShownId = q.id; autoAwaiting = true;
+    autoShownId = q.id; autoAwaiting = true; autoInsert = false; autoPaused = false;
     if (!sendText(q.text, q.lang, { auto: true })) { autoAwaiting = false; autoTimer = setTimeout(autoStep, 50); }
     renderQueue(true);
   }
@@ -355,9 +356,17 @@
     autoAwaiting = false; autoHoldMs = auto.hold * 1000; autoNextAt = Date.now() + autoHoldMs;
     autoTimer = setTimeout(autoStep, autoHoldMs);
   }
+  /* ручной вывод во время автопоказа: показать вставку, выдержать паузу и продолжить список.
+     ЗАТЕМНИТЬ ставит автопоказ на паузу до «ВЕРНУТЬ». Остановить совсем — ⌥A или кнопкой. */
+  function autoInterrupt(mode, restore) {
+    clearTimeout(autoTimer); autoNextAt = 0;
+    if (mode === 'black') { autoPaused = true; autoAwaiting = false; renderAuto(); return; }
+    autoPaused = false; autoInsert = autoInsert && restore ? true : !restore; autoAwaiting = true; // ждём, пока вставка допечатается (autoOnDone)
+    renderAuto();
+  }
   function stopAuto(msg) {
     if (!autoOn) return;
-    autoOn = false; autoAwaiting = false; autoNextAt = 0; clearTimeout(autoTimer);
+    autoOn = false; autoAwaiting = false; autoNextAt = 0; autoPaused = false; autoInsert = false; clearTimeout(autoTimer);
     renderQueue(); if (msg) toast(msg, 3500);
   }
   function renderAuto() {
@@ -372,12 +381,14 @@
   function tickAuto() {
     const el = $('#autoStatus'); if (!el) return;
     if (!autoOn) { el.innerHTML = 'Сообщения идут одно за другим, начиная с выделенного рамкой. <b>Клик по номеру</b> — выбрать, с какого начать.'; return; }
-    const shown = queue.findIndex(q => q.id === autoShownId) + 1;
+    if (autoPaused) { el.innerHTML = '<b>Пауза</b>: экран затемнён. «ВЕРНУТЬ» (⌥B) продолжит автопоказ.'; return; }
+    const shownN = queue.findIndex(q => q.id === autoShownId) + 1;
+    const shown = autoInsert ? 'ручное сообщение' : '№' + shownN;
     const nextN = qptr < queue.length ? '№' + (qptr + 1) : (auto.mode === 'loop' ? '№1 (новый круг)' : 'конец списка');
     if (autoNextAt) {
       const left = Math.max(0, autoNextAt - Date.now());
-      el.innerHTML = `В эфире <b>№${shown}</b> · дальше ${nextN} через <b>${Math.ceil(left / 1000)} с</b><div class="pbar"><i style="width:${100 - left / autoHoldMs * 100}%"></i></div>`;
-    } else el.innerHTML = `В эфире <b>№${shown}</b> · текст появляется… · дальше ${nextN}`;
+      el.innerHTML = `В эфире <b>${shown}</b> · дальше ${nextN} через <b>${Math.ceil(left / 1000)} с</b><div class="pbar"><i style="width:${100 - left / autoHoldMs * 100}%"></i></div>`;
+    } else el.innerHTML = `В эфире <b>${shown}</b> · появляется… · дальше ${nextN}`;
   }
   setInterval(() => { if (autoOn) tickAuto(); }, 200);
   $('#autoBtn').addEventListener('click', () => (autoOn ? stopAuto() : startAuto()));
@@ -385,6 +396,7 @@
   $('#autoHold').addEventListener('input', e => { auto.hold = parseFloat(e.target.value); saveAuto(); $('#autoHoldOut').textContent = auto.hold + ' с'; });
 
   function qNext() {
+    if (autoOn) { autoStep(); return; }
     if (qptr >= queue.length) { toast(queue.length ? 'Очередь закончилась' : 'Очередь пуста'); return; }
     const q = queue[qptr]; sendText(q.text, q.lang); qptr++; save(); renderQueue(true);
   }
